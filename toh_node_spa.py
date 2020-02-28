@@ -190,74 +190,83 @@ class TowerOfHanoi(object):
 # goal disc is blue
 # focus disk is red
 # when goal == focus, the disk is purple
+def toh_vis_debug(label='visualization/debug'):
+    model = nengo.Network(label)
+    with model:
+        hanoi_node = toh_node_create(disk_count, dimensions, vocab)
+        #hanoi_node = toh_node
+        
+        ##### Node for visualization #####
+        def viz_func(t, x):
+            focus_peg = [0]*3
+            if x[0] < 3:
+                focus_peg[int(x[0])] = 255
+            print("focus_peg: {}".format(focus_peg))
+            
+            goal_disc = [0]*3
+            if x[1] < 3:
+                goal_disc[int(x[1])] = 255
+            print("goal_disc: {}".format(goal_disc))
+            
+            focus_disc = [0]*3
+            if x[1] < 3:
+                focus_disc[int(x[2])] = 255
+            print("focus_disc: {}".format(focus_disc))
+            
+            location = x[3:6]
+            viz_func._nengo_html_ = '''
+            <svg width="400" height="110">
+              <rect x="50" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
+              <rect x="150" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
+              <rect x="250" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
+              
+              <rect x="%i" y="40" width="40" height="20" style="fill:rgb(%i,0,%i);" />
+              <rect x="%i" y="70" width="70" height="15" style="fill:rgb(%i,0,%i);" />
+              <rect x="%i" y="100" width="100" height="10" style="fill:rgb(%i,0,%i);" />
+            </svg>
+            ''' %(focus_peg[0], focus_peg[1], focus_peg[2],
+                 (35+location[0]*100), focus_disc[0], goal_disc[0],
+                 (15+location[1]*100), focus_disc[1], goal_disc[1],
+                 (location[2]*100), focus_disc[2], goal_disc[2])
+            
+        viz_node = nengo.Node(viz_func, size_in=6, label='viz_node')
+        nengo.Connection(hanoi_node.focus_viz, viz_node[0])
+        nengo.Connection(hanoi_node.goal_viz, viz_node[1])
+        nengo.Connection(hanoi_node.peg_viz, viz_node[2])
+        nengo.Connection(hanoi_node.pos_viz, viz_node[3:6])
+        
+        # connect all state inputs for visual
+        move_in_state = spa.State(vocab, dimensions, label='move_in_state')
+        move_peg_in_state = spa.State(vocab, dimensions, label='move_peg_in_state')
+        goal_in_state = spa.State(vocab, dimensions, label='goal_in_state')
+        goal_peg_in_state = spa.State(vocab, dimensions, label='goal_peg_in_state')
+        focus_in_state = spa.State(vocab, dimensions, label='focus_in_state')
+        nengo.Connection(move_in_state.output, hanoi_node.move_in, synapse=None)
+        nengo.Connection(move_peg_in_state.output, hanoi_node.move_peg_in, synapse=None)
+        nengo.Connection(goal_in_state.output, hanoi_node.goal_in, synapse=None)
+        nengo.Connection(goal_peg_in_state.output, hanoi_node.goal_peg_in, synapse=None)
+        nengo.Connection(focus_in_state.output, hanoi_node.focus_in, synapse=None)
+        
+        # connect all state outputs for visual
+        largest_out_state = spa.State(vocab, dimensions, label='largest_out_state')
+        focus_out_state = spa.State(vocab, dimensions, label='focus_out_state')
+        goal_peg_out_state = spa.State(vocab, dimensions, label='goal_peg_out_state')
+        target_peg_out_state = spa.State(vocab, dimensions, label='target_peg_out_state')
+        goal_out_state = spa.State(vocab, dimensions, label='goal_out_state')
+        goal_peg_final_out_state = spa.State(vocab, dimensions, label='goal_peg_final_out_state')
+        focus_peg_out_state = spa.State(vocab, dimensions, label='focus_peg_out_state')
+        nengo.Connection(hanoi_node.largest_out, largest_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.focus_out, focus_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.goal_peg_out, goal_peg_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.target_peg_out, target_peg_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.goal_out, goal_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.goal_peg_final_out, goal_peg_final_out_state.input, synapse=None)
+        nengo.Connection(hanoi_node.focus_peg_out, focus_peg_out_state.input, synapse=None)
+    return model
 
-model = nengo.Network('TOH Node')
+'''
+model = nengo.Network('Base network')
 with model:
-    hanoi_node = toh_node_create(disk_count, dimensions, vocab)
-    
-    ##### Node for visualization #####
-    def viz_func(t, x):
-        focus_peg = [0]*3
-        if x[0] < 3:
-            focus_peg[int(x[0])] = 255
-        print("focus_peg: {}".format(focus_peg))
-        
-        goal_disc = [0]*3
-        if x[1] < 3:
-            goal_disc[int(x[1])] = 255
-        print("goal_disc: {}".format(goal_disc))
-        
-        focus_disc = [0]*3
-        if x[1] < 3:
-            focus_disc[int(x[2])] = 255
-        print("focus_disc: {}".format(focus_disc))
-        
-        location = x[3:6]
-        viz_func._nengo_html_ = '''
-        <svg width="400" height="110">
-          <rect x="50" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
-          <rect x="150" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
-          <rect x="250" y="0" width="10" height="600" style="fill:rgb(0,0,%i);" />
-          
-          <rect x="%i" y="40" width="40" height="20" style="fill:rgb(%i,0,%i);" />
-          <rect x="%i" y="70" width="70" height="15" style="fill:rgb(%i,0,%i);" />
-          <rect x="%i" y="100" width="100" height="10" style="fill:rgb(%i,0,%i);" />
-        </svg>
-        ''' %(focus_peg[0], focus_peg[1], focus_peg[2],
-             (35+location[0]*100), focus_disc[0], goal_disc[0],
-             (15+location[1]*100), focus_disc[1], goal_disc[1],
-             (location[2]*100), focus_disc[2], goal_disc[2])
-        
-    viz_node = nengo.Node(viz_func, size_in=6)
-    nengo.Connection(hanoi_node.focus_viz, viz_node[0])
-    nengo.Connection(hanoi_node.goal_viz, viz_node[1])
-    nengo.Connection(hanoi_node.peg_viz, viz_node[2])
-    nengo.Connection(hanoi_node.pos_viz, viz_node[3:6])
-    
-    # connect all state inputs for visual
-    move_in_state = spa.State(vocab, dimensions)
-    move_peg_in_state = spa.State(vocab, dimensions)
-    goal_in_state = spa.State(vocab, dimensions)
-    goal_peg_in_state = spa.State(vocab, dimensions)
-    focus_in_state = spa.State(vocab, dimensions)
-    nengo.Connection(move_in_state.output, hanoi_node.move_in, synapse=None)
-    nengo.Connection(move_peg_in_state.output, hanoi_node.move_peg_in, synapse=None)
-    nengo.Connection(goal_in_state.output, hanoi_node.goal_in, synapse=None)
-    nengo.Connection(goal_peg_in_state.output, hanoi_node.goal_peg_in, synapse=None)
-    nengo.Connection(focus_in_state.output, hanoi_node.focus_in, synapse=None)
-    
-    # connect all state outputs for visual
-    largest_out_state = spa.State(vocab, dimensions)
-    focus_out_state = spa.State(vocab, dimensions)
-    goal_peg_out_state = spa.State(vocab, dimensions)
-    target_peg_out_state = spa.State(vocab, dimensions)
-    goal_out_state = spa.State(vocab, dimensions)
-    goal_peg_final_out_state = spa.State(vocab, dimensions)
-    focus_peg_out_state = spa.State(vocab, dimensions)
-    nengo.Connection(hanoi_node.largest_out, largest_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.focus_out, focus_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.goal_peg_out, goal_peg_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.target_peg_out, target_peg_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.goal_out, goal_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.goal_peg_final_out, goal_peg_final_out_state.input, synapse=None)
-    nengo.Connection(hanoi_node.focus_peg_out, focus_peg_out_state.input, synapse=None)
+    #hanoi_node = toh_node_create(disk_count, dimensions, vocab)
+    vis_network = toh_vis_debug('Tower of Hanoi')
+'''
